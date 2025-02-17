@@ -5,22 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Participant extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = [
-        'name',
-        'email',
-        'token',
-        'info',
-        'checked_in_at',
-        'form_id',
-    ];
+    protected $fillable = ['name', 'email'];
 
-    protected $casts = [
-        'info' => 'array',
-        'checked_in_at' => 'datetime',
-    ];
+    public function events()
+    {
+        return $this->belongsToMany(Event::class, 'event_participants')
+            ->withPivot(['answers', 'token', 'checked_in_at', 'status'])
+            ->withTimestamps();
+    }
 }
