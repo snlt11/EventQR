@@ -22,7 +22,7 @@ class EventController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'questions' => 'required|array',
-                'start_datetime' => 'nullable|date',
+                'start_datetime' => 'required|date|after_or_equal:now',
                 'end_datetime' => 'nullable|date|after_or_equal:start_datetime',
             ]);
 

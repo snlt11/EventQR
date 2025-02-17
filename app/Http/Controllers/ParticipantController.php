@@ -112,11 +112,10 @@ class ParticipantController extends Controller
             ->with('participant', 'event')
             ->get();
 
-        // $batch = Bus::batch([])->allowFailures()->dispatch();
+        $batch = Bus::batch([])->allowFailures()->dispatch();
 
         foreach ($updatedParticipants as $eventParticipant) {
-            // $batch->add(new SendStatusEmail($eventParticipant, $request->status));
-            new SendStatusEmail($eventParticipant, $request->status);
+            $batch->add(new SendStatusEmail($eventParticipant, $request->status));
         }
         return response()->json([
             'success' => true,
