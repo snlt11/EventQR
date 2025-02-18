@@ -38,10 +38,6 @@ class CustomMiddleware
 
         $response = $next($request);
 
-        if ($response->getStatusCode() === 404) {
-            throw new MessageError('Endpoint not found. If you are having trouble, please contact support.', 404);
-        }
-
         return $response;
     }
 }

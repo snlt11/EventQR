@@ -3,8 +3,9 @@
 namespace App\Helper;
 
 use Throwable;
+use Exception;
 
-class MessageError extends \Exception implements Throwable
+class MessageError extends Exception implements Throwable
 {
     public function render($request)
     {
