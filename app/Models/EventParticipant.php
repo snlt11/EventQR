@@ -25,7 +25,6 @@ class EventParticipant extends Model
     protected $casts = [
         'checked_in_at' => 'datetime',
         'answers' => 'json',
-
     ];
 
     protected $attributes = [

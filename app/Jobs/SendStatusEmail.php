@@ -41,8 +41,7 @@ class SendStatusEmail implements ShouldQueue
                 $qrCodeSvg = QrCode::size(300)->generate($this->eventParticipant->token);
             }
 
-            Mail::to($participant->email)
-                ->send(new ParticipantStatusEmail($participant, $event, $this->status, $qrCodeSvg));
+            Mail::to($participant->email)->send(new ParticipantStatusEmail($participant, $event, $this->status, $qrCodeSvg));
 
             Log::info("Status email sent successfully for EventParticipant ID: {$this->eventParticipant->id}");
         } catch (\Exception $e) {

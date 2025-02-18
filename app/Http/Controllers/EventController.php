@@ -15,6 +15,7 @@ use App\Helper\MessageError;
 
 class EventController extends Controller
 {
+
     public function createEvent(Request $request)
     {
         try {
@@ -98,16 +99,60 @@ class EventController extends Controller
         }
     }
 
-    public function listEvents()
+    public function listEvents(Request $request)
     {
         try {
+            $query = Event::query();
 
-            $events = Event::whereNull('deleted_at')->get();
+            $filters = [
+                'title' => fn($query, $value) => $query->where('title', 'like', "%$value%"),
+                'description' => fn($query, $value) => $query->where('description', 'like', "%$value%"),
+                'is_published' => fn($query, $value) => $query->where('is_published', $value === 'true'),
+                'start_datetime' => fn($query, $value) => $query->where('start_datetime', '>=', $value),
+                'end_datetime' => fn($query, $value) => $query->where('end_datetime', '<=', $value),
+            ];
+
+            foreach ($filters as $param => $filterFunction) {
+                $request->has($param) && $filterFunction($query, $request->input($param));
+            }
+
+            $perPage = $request->input('per_page', 10);
+            $page = $request->input('page', 1);
+
+            $query->whereNull('deleted_at');
+
+            $events = $query->select([
+                'id',
+                'title',
+                'description',
+                'questions',
+                'creator_id',
+                'is_published',
+                'start_datetime',
+                'end_datetime',
+            ])->paginate($perPage, ['*'], 'page', $page);
+
+            $eventsInfo = $events->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'name' => $event->title,
+                    'description' => $event->description,
+                    'creator' => $event->creator->name,
+                    'is_published' => $event->is_published,
+                    'start_datetime' => $event->start_datetime,
+                    'end_datetime' => $event->end_datetime,
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Events retrieved successfully',
-                'data' => $events,
+                'message' =>  $eventsInfo->isEmpty() ? 'No events found' : 'Events retrieved successfully',
+                'data' => $eventsInfo,
+                'total_count' => $events->total(),
+                'filtered_count' => $events->total(),
+                'current_page' => $events->currentPage(),
+                'per_page' => $events->perPage(),
+                'last_page' => $events->lastPage(),
             ], 200);
         } catch (\Exception $e) {
             logger()->error('Error in listEvents: ' . $e->getMessage());
@@ -189,7 +234,7 @@ class EventController extends Controller
         return JWT::encode($payload, $key, 'HS256');
     }
 
-    public function changeEventStatus($eventId, $status)
+    public function changeEventParticipantStatus($eventId, $status)
     {
         try {
             $event = EventParticipant::where('event_id', $eventId)->first();
@@ -206,7 +251,7 @@ class EventController extends Controller
         } catch (MessageError $e) {
             return $e->render(request());
         } catch (\Exception $e) {
-            logger()->error('Error in changeEventStatus: ' . $e->getMessage());
+            logger()->error('Error in EventParticipantStatus: ' . $e->getMessage());
             throw new MessageError('An error occurred while changing event status');
         }
     }

@@ -6,13 +6,15 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
+use App\Helper\MessageError;
 
-class CustomThrottleRequests
+class CustomMiddleware
 {
     protected $maxAttempts = 70;
     protected $decayMinutes = 1;
     protected $banAttempts = 100;
     protected $banMinutes = 60;
+
     public function handle(Request $request, Closure $next): Response
     {
         $key = 'throttle_' . $request->ip();
@@ -34,6 +36,12 @@ class CustomThrottleRequests
 
         RateLimiter::hit($key, $this->decayMinutes * 60);
 
-        return $next($request);
+        $response = $next($request);
+
+        if ($response->getStatusCode() === 404) {
+            throw new MessageError('Endpoint not found. If you are having trouble, please contact support.', 404);
+        }
+
+        return $response;
     }
 }

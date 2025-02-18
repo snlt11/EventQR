@@ -8,6 +8,6 @@ class MessageError extends \Exception implements Throwable
 {
     public function render($request)
     {
-        return response()->json(['message' => $this->getMessage()], 400);
+        return response()->json(['message' => $this->getMessage()], 404);
     }
 }

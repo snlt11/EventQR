@@ -9,6 +9,7 @@ use App\Models\EventParticipant;
 use Exception;
 use App\Helper\MessageError;
 use App\Jobs\SendStatusEmail;
+use App\Models\Event;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
@@ -120,6 +121,66 @@ class ParticipantController extends Controller
         return response()->json([
             'success' => true,
             'message' => $message . " successfully to {$request->status}. Emails will be sent shortly.",
+        ], 200);
+    }
+
+    public function listOfParticipants(Request $request, $eventId)
+    {
+        $event = Event::find($eventId);
+
+        $event || throw new MessageError('Event not found.');
+
+        $query = EventParticipant::where('event_id', $eventId)
+            ->with(['participant:id,name,email', 'event:id,title']);
+
+        $filters = [
+            'name' => fn($query, $value) => $query->whereHas('participant', function ($q) use ($value) {
+                $q->where('name', 'like', "%$value%");
+            }),
+            'email' => fn($query, $value) => $query->whereHas('participant', function ($q) use ($value) {
+                $q->where('email', 'like', "%$value%");
+            }),
+            'status' => fn($query, $value) => $query->where('status', $value),
+            'checked_in' => fn($query, $value) => $value === 'true' ? $query->whereNotNull('checked_in_at') : $query->whereNull('checked_in_at'),
+        ];
+
+        foreach ($filters as $param => $filterFunction) {
+            if ($request->has($param)) {
+                $filterFunction($query, $request->input($param));
+            }
+        }
+
+        $perPage = $request->input('per_page', 10);
+        $page = $request->input('page', 1);
+
+        $participants = $query->select([
+            'event_participants.id',
+            'event_participants.participant_id',
+            'event_participants.event_id',
+            'event_participants.status',
+            'event_participants.checked_in_at',
+        ])->paginate($perPage, ['*'], 'page', $page);
+
+        $participantsInfo = $participants->map(function ($eventParticipant) {
+            return [
+                'id' => $eventParticipant->id,
+                'name' => $eventParticipant->participant->name,
+                'email' => $eventParticipant->participant->email,
+                'status' => $eventParticipant->status,
+                'checked_in_at' => $eventParticipant->checked_in_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $participants->isEmpty() ? 'No participants found' : 'Participants retrieved successfully',
+            'event_title' => $event->title,
+            'data' => $participantsInfo,
+            'total_count' => $participants->count(),
+            'filtered_count' => $participants->total(),
+            'current_page' => $participants->currentPage(),
+            'per_page' => $participants->perPage(),
+            'last_page' => $participants->lastPage(),
         ], 200);
     }
 }
